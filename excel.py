@@ -10,6 +10,27 @@ import pandas as pd
 import os
 
 
+TestRecordInfo = {'Sn': '', 'RunMode': 'Auto', 'StartTime': '', 'StopTime': '', 'Station': 'PA00001', 'Status': '',
+                  'UserName': 'Zillnk01', 'ProductNumber': 'RHS1160061', 'TestType': 'Prod', 'Rstate': 'R1D',
+                  'TpName': 'RuVue', 'TpVer': '20210501', 'MpgName': '',  'MpgTestTime': '', 'AppRev': '',
+                  'MpgDescription': '', 'MpName': '', 'MpStatus': '', 'MpTestTime': '', 'MpDataType': 'float',
+                  'MpDescription': '', 'LimitDown': '', 'LimitUp': '', 'Unit': '', 'Result': ''}
+
+
+def TestRecordInfoGen(Sn: str, RunMode: str, StartTime: str, StopTime:str, Status: str, MpgName: str, MpgTestTime: str,
+                      MpgDescription: str, MpName: str, MpStatus: str,  MpTestTime: str, MpDataType: str, MpDescription: str,
+                      LimitDown, LimitUp,Unit, Result, AppRev: str, Station: str='PA00001',
+                      ProductNumber: str='RHS1160061', Rstate:str='R1D',TpVer: str='20210501', UserName :str= 'Zillnk01',
+                      TestType :str= 'Prod'
+                      ):
+
+    TestRecordInfo = {'Sn': Sn, 'RunMode': RunMode, 'StartTime': StartTime, 'StopTime': StopTime, 'Station': Station, 'Status': Status,
+                      'UserName': UserName, 'ProductNumber': ProductNumber, 'TestType': TestType, 'Rstate': Rstate,
+                      'TpName': 'RuVue', 'TpVer': TpVer, 'MpgName': MpgName, 'MpgTestTime': MpgTestTime, 'AppRev': AppRev,
+                      'MpgDescription': MpgDescription, 'MpName': MpName, 'MpStatus': MpStatus, 'MpTestTime': MpTestTime, 'MpDataType': MpDataType,
+                      'MpDescription': MpDescription, 'LimitDown': LimitDown, 'LimitUp': LimitUp, 'Unit': Unit, 'Result': Result}
+    return TestRecordInfo
+
 def show(p, filter=None):
     cnt = 0
     for root, dirs, files in os.walk(p):
@@ -28,8 +49,9 @@ def show(p, filter=None):
                         #print(path)
                         continue
                     else:
-                        print(cnt, ':', info)
-                        cnt = cnt + 1
+                        ""
+                        # print(cnt, ':', info)
+                        # cnt = cnt + 1
                 except FileNotFoundError as e:
                     print(str(e))
 
@@ -53,25 +75,172 @@ def read_sn(file):
     except:
         return None
 
-def read_info(file):
+# def read_info(file):
+#     try:
+#         xls = pd.ExcelFile(file)
+#         if 'Prod Info' in xls.sheet_names:
+#             info = xls.parse('Prod Info', header=None)
+#             #return info.values[1, 1]
+#             d = {}
+#             for i in info.index:
+#                 cell_name = info.values[i, 0]
+#                 cell_value = info.values[i, 1]
+#                 d[cell_name] = cell_value
+#
+#             if 'Serial Number' in d and 'SW info' in d and 'Test Date' in d and "ZSM_20210407_ST_Cpri_Clock_01" in d['SW info']:
+#                 #print(d['Serial Number'], ': ', d['SW info'])
+#                 return d['Serial Number'] + ":" + d['SW info'] + ":" + d['Test Date']
+#
+#         else:
+#             return None
+#     except:
+#         return None
+
+
+def read_rx_gain(file):
     try:
         xls = pd.ExcelFile(file)
-        if 'Prod Info' in xls.sheet_names:
+        if 'Prod Info' in xls.sheet_names and 'rx_calib' in xls.sheet_names:
+            #print(file)
             info = xls.parse('Prod Info', header=None)
-            #return info.values[1, 1]
+            # return info.values[1, 1]
             d = {}
             for i in info.index:
                 cell_name = info.values[i, 0]
                 cell_value = info.values[i, 1]
                 d[cell_name] = cell_value
 
-            if 'Serial Number' in d and 'SW info' in d and 'Test Date' in d:
-                #print(d['Serial Number'], ': ', d['SW info'])
-                return d['Serial Number'] + ":" + d['SW info'] + ":" + d['Test Date']
+            if 'Serial Number' in d and 'SW info' in d and 'Test Date' in d and "ZSM_20210407_ST_Cpri_Clock_01" in d[
+                'SW info']:
+                # print(d['Serial Number'], ': ', d['SW info'])
+                info = d['Serial Number'] + ":" + d['SW info'] + ":" + d['Test Date']
+            else:
+                return None
+            rx_calib = xls.parse('rx_calib', header=None)
+            #print(rx_calib.values)
+            gain_A = rx_calib.values[1, 2]
+            gain_B = rx_calib.values[14, 2]
+            gain_C = rx_calib.values[27, 2]
+            gain_D = rx_calib.values[40, 2]
+            #print(info, ': rx branch  A gain = ', gain)
+            return info + ': rx branch  A gain = ' + str(gain_A) + ': rx branch  B gain = ' + str(gain_B)+ ': rx branch  C gain = ' + str(gain_C)+ ': rx branch  D gain = ' + str(gain_D)
         else:
             return None
     except:
         return None
+
+def date_str_conv(date: str):
+    date = date.split('-')
+    return date[0] + '-' + date[1] + '-' + date[2] + ' ' + date[3] + ':' + date[4] + ':' + date[5]
+
+def read_info(file):
+    try:
+        xls = pd.ExcelFile(file)
+        if 'Prod Info' in xls.sheet_names:
+            #print(file)
+            info = xls.parse('Prod Info', header=None)
+            # return info.values[1, 1]
+            d = {}
+            for i in info.index:
+                cell_name = info.values[i, 0]
+                cell_value = info.values[i, 1]
+                d[cell_name] = cell_value
+
+            if 'Serial Number' in d and 'SW info' in d and 'Test Date' in d and "ZSM_20210407_ST_Cpri_Clock_01" in d[
+                'SW info']:
+                # print(d['Serial Number'], ': ', d['SW info'])
+                info = d['Serial Number'] + ":" + d['SW info'] + ":" + date_str_conv(d['Test Date'])
+
+                ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=d['Test Date'], StopTime="",
+                                             Status="", MpgName="", MpgTestTime="", AppRev=d['SW info'],
+                      MpgDescription="", MpName="",  MpStatus="",  MpTestTime="", MpDataType="", MpDescription="",
+                      LimitDown="", LimitUp="", Unit="", Result="")
+            else:
+                return None
+
+            for sheet in xls.sheet_names:
+
+                if 'rx_calib' in xls.sheet_names:
+                    rx_calib = xls.parse('rx_calib', header=None)
+                    #print(rx_calib.values)
+                    gain_A = rx_calib.values[1, 2] - rx_calib.values[1, 1]
+                    gain_B = rx_calib.values[14, 2] - rx_calib.values[14, 1]
+                    gain_C = rx_calib.values[27, 2] - rx_calib.values[27, 1]
+                    gain_D = rx_calib.values[40, 2] - rx_calib.values[40, 1]
+                    gain = [gain_A, gain_B, gain_C, gain_D]
+                    temp = [rx_calib.values[1, 3], rx_calib.values[14, 3], rx_calib.values[27, 3], rx_calib.values[40, 3]]
+                    freq_comp_tbl = {
+                                     rx_calib.values[1, 0]: dict(zip(rx_calib.values[3:14, 1],
+                                                                  rx_calib.values[1, 2] - (rx_calib.values[3:14, 2] + 50))),
+                                     rx_calib.values[14, 0]: dict(zip(rx_calib.values[16:27, 1],
+                                                                  rx_calib.values[14, 2] - (rx_calib.values[16:27, 2] + 50))),
+                                     rx_calib.values[27, 0]: dict(zip(rx_calib.values[29:40, 1],
+                                                                  rx_calib.values[27, 2] - (rx_calib.values[29:40, 2] + 50))),
+                                     rx_calib.values[40, 0]: dict(zip(rx_calib.values[42:53, 1],
+                                                                  rx_calib.values[40, 2] - (rx_calib.values[42:53, 2] + 50))),
+                                     }
+
+                    #print(info, ': rx branch  A gain = ', gain)
+                    #return info + ': rx branch  A gain = ' + str(gain_A) + ': rx branch  B gain = ' + str(gain_B)+ ': rx branch  C gain = ' + str(gain_C)+ ': rx branch  D gain = ' + str(gain_D)
+                    #print(info + 'gain= ' + str(gain) + 'temp = ' + str(temp) + 'freqComTab =: ' + str(freq_comp_tbl))
+                    for index, branch in enumerate(['A', 'B', 'C', 'D']):
+                        #ProdInfo['']
+                        #print(index, ':', branch)
+
+                        # UL calib gain
+                        MpgName = 'Rx Calib Gain'
+                        MpgTestTime = date_str_conv(d['Test Date'])
+                        MpgDescription = 'Rx calibration'
+                        MpName = f'rx gain 3700MHz Br{branch}'
+                        MpTestTime = date_str_conv(d['Test Date'])
+                        MpDataType = 'DOUBLE'
+                        MpDescription = 'Rx frontend gain at center frequency'
+                        LimitDown = 28
+                        LimitUp= 35
+                        Unit = 'dB'
+                        Result = float(gain[index])
+                        MpStatus = 'pass' if (Result > LimitDown and Result < LimitUp) else 'fail'
+
+                        ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=d['Test Date'],
+                                                     StopTime="",
+                                                     Status="", MpgName=MpgName, MpgTestTime=MpgTestTime, AppRev=d['SW info'],
+                                                     MpgDescription=MpgDescription, MpName=MpName, MpStatus=MpStatus, MpTestTime=MpTestTime,
+                                                     MpDataType=MpDataType, MpDescription=MpDescription,
+                                                     LimitDown=LimitDown, LimitUp=LimitUp, Unit=Unit, Result=Result)
+                        print(ProdInfo)
+
+                        # UL  temperature
+                        MpgName = 'Rx Temperature'
+                        MpgTestTime = date_str_conv(d['Test Date'])
+                        MpgDescription = 'Rx Temperature during calibration'
+                        MpName = f'rx temperature Br{branch}'
+                        MpTestTime = date_str_conv(d['Test Date'])
+                        MpDataType = 'DOUBLE'
+                        MpDescription = 'Rx Temperature during calibration'
+                        LimitDown = 10
+                        LimitUp = 50
+                        Unit = '°C'
+                        Result = float(gain[index])
+                        MpStatus = 'pass' if (Result > LimitDown and Result < LimitUp) else 'fail'
+
+                        ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=d['Test Date'],
+                                                     StopTime="",
+                                                     Status="", MpgName=MpgName, MpgTestTime=MpgTestTime,
+                                                     AppRev=d['SW info'],
+                                                     MpgDescription=MpgDescription, MpName=MpName, MpStatus=MpStatus,
+                                                     MpTestTime=MpTestTime,
+                                                     MpDataType=MpDataType, MpDescription=MpDescription,
+                                                     LimitDown=LimitDown, LimitUp=LimitUp, Unit=Unit, Result=Result)
+                        print(ProdInfo)
+                        #for freq in freq_comp_tbl[branch].keys():
+
+
+                    return info + ' gain= ' + str(gain) + 'temp = ' + str(temp) + 'freqComTab =: ' + str(freq_comp_tbl)
+        else:
+            return None
+    except:
+        return None
+
 
 
 path = r"\\172.16.1.11\\产品开发-公用\\test\\ORU1226 N77A\\2021"
