@@ -8,6 +8,11 @@ __version__ = "0.0.1"
 __email__ = "yang.li@zillnk.com"
 import pandas as pd
 import os
+import time
+from getpass import getpass
+from mysql.connector import connect, Error
+
+cnt = 0
 
 
 TestRecordInfo = {'Sn': '', 'RunMode': 'Auto', 'StartTime': '', 'StopTime': '', 'Station': 'PA00001', 'Status': '',
@@ -29,7 +34,52 @@ def TestRecordInfoGen(Sn: str, RunMode: str, StartTime: str, StopTime:str, Statu
                       'TpName': 'RuVue', 'TpVer': TpVer, 'MpgName': MpgName, 'MpgTestTime': MpgTestTime, 'AppRev': AppRev,
                       'MpgDescription': MpgDescription, 'MpName': MpName, 'MpStatus': MpStatus, 'MpTestTime': MpTestTime, 'MpDataType': MpDataType,
                       'MpDescription': MpDescription, 'LimitDown': LimitDown, 'LimitUp': LimitUp, 'Unit': Unit, 'Result': Result}
+
     return TestRecordInfo
+
+
+def mysql_operate(TestRecordInfo: dict):
+    global cnt
+    cnt = cnt + 1
+    print('cnt:', cnt, TestRecordInfo)
+    update_query = """
+        INSERT INTO
+        `test_result_tbl`(
+            `cnt`,
+            `Sn`,
+            `RunMode`,
+            `StartTime`,
+            `MpgName`,
+            `MpgTestTime`,
+            `AppRev`,
+            `MpName`,
+            `MpTestTime`,
+            `LimitDown`,
+            `LimitUp`,
+            `Result`
+        )
+        VALUES(
+                %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %s, %s, %s
+            );
+        """ % (
+        #Sn, RunMode, StartTime, MpgName, MpgTestTime, AppRev, MpName, MpTestTime, LimitDown, LimitUp, Result
+        cnt, TestRecordInfo['Sn'], TestRecordInfo['RunMode'], TestRecordInfo['StartTime'],
+        TestRecordInfo['MpgName'], TestRecordInfo['MpgTestTime'], TestRecordInfo['AppRev'], TestRecordInfo['MpName'],
+        TestRecordInfo['MpTestTime'], TestRecordInfo['LimitDown'], TestRecordInfo['LimitUp'], TestRecordInfo['Result']
+
+        )
+    print(update_query)
+    #time.sleep(0.5)
+    try:
+        with connection.cursor() as cursor:
+            for result in cursor.execute(update_query, multi=True):
+                if result.with_rows:
+                    print(result.fetchall())
+            connection.commit()
+            #time.sleep(1)
+    except:
+        print('sql operation failed!')
+        return
 
 def show(p, filter=None):
     cnt = 0
@@ -151,7 +201,7 @@ def read_info(file):
                 # print(d['Serial Number'], ': ', d['SW info'])
                 info = d['Serial Number'] + ":" + d['SW info'] + ":" + date_str_conv(d['Test Date'])
 
-                ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=d['Test Date'], StopTime="",
+                ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=date_str_conv(d['Test Date']), StopTime="",
                                              Status="", MpgName="", MpgTestTime="", AppRev=d['SW info'],
                       MpgDescription="", MpName="",  MpStatus="",  MpTestTime="", MpDataType="", MpDescription="",
                       LimitDown="", LimitUp="", Unit="", Result="")
@@ -191,39 +241,39 @@ def read_info(file):
                         MpgName = 'Rx Calib Gain'
                         MpgTestTime = date_str_conv(d['Test Date'])
                         MpgDescription = 'Rx calibration'
-                        MpName = f'rx gain 3700MHz Br{branch}'
+                        MpName = f'rx gain 3700MHz Branch {branch}'
                         MpTestTime = date_str_conv(d['Test Date'])
                         MpDataType = 'DOUBLE'
-                        MpDescription = 'Rx frontend gain at center frequency'
+                        MpDescription = f'Rx frontend gain at center frequency Branch {branch}'
                         LimitDown = 28
                         LimitUp= 35
                         Unit = 'dB'
                         Result = float(gain[index])
                         MpStatus = 'pass' if (Result > LimitDown and Result < LimitUp) else 'fail'
 
-                        ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=d['Test Date'],
+                        ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=date_str_conv(d['Test Date']),
                                                      StopTime="",
                                                      Status="", MpgName=MpgName, MpgTestTime=MpgTestTime, AppRev=d['SW info'],
                                                      MpgDescription=MpgDescription, MpName=MpName, MpStatus=MpStatus, MpTestTime=MpTestTime,
                                                      MpDataType=MpDataType, MpDescription=MpDescription,
                                                      LimitDown=LimitDown, LimitUp=LimitUp, Unit=Unit, Result=Result)
-                        print(ProdInfo)
-
+                        #print(ProdInfo)
+                        mysql_operate(ProdInfo)
                         # UL  temperature
                         MpgName = 'Rx Temperature'
                         MpgTestTime = date_str_conv(d['Test Date'])
-                        MpgDescription = 'Rx Temperature during calibration'
-                        MpName = f'rx temperature Br{branch}'
+                        MpgDescription = f'Rx Temperature during calibration'
+                        MpName = f'rx temperature Branch {branch}'
                         MpTestTime = date_str_conv(d['Test Date'])
                         MpDataType = 'DOUBLE'
-                        MpDescription = 'Rx Temperature during calibration'
+                        MpDescription = f'Rx Temperature during calibration Branch {branch}'
                         LimitDown = 10
                         LimitUp = 50
                         Unit = '°C'
                         Result = float(gain[index])
                         MpStatus = 'pass' if (Result > LimitDown and Result < LimitUp) else 'fail'
 
-                        ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=d['Test Date'],
+                        ProdInfo = TestRecordInfoGen(Sn=d['Serial Number'], RunMode='Prod', StartTime=date_str_conv(d['Test Date']),
                                                      StopTime="",
                                                      Status="", MpgName=MpgName, MpgTestTime=MpgTestTime,
                                                      AppRev=d['SW info'],
@@ -231,15 +281,31 @@ def read_info(file):
                                                      MpTestTime=MpTestTime,
                                                      MpDataType=MpDataType, MpDescription=MpDescription,
                                                      LimitDown=LimitDown, LimitUp=LimitUp, Unit=Unit, Result=Result)
-                        print(ProdInfo)
+                        #print(ProdInfo)
+                        mysql_operate(ProdInfo)
                         #for freq in freq_comp_tbl[branch].keys():
 
 
-                    return info + ' gain= ' + str(gain) + 'temp = ' + str(temp) + 'freqComTab =: ' + str(freq_comp_tbl)
+                    #return info + ' gain= ' + str(gain) + 'temp = ' + str(temp) + 'freqComTab =: ' + str(freq_comp_tbl)
+                    return(ProdInfo)
         else:
             return None
     except:
         return None
+
+
+
+try:
+    connection = connect(
+        host="localhost",
+        user="root",
+        password="oppaha89",
+        database="oru1226n78a",
+    )
+except Error as e:
+    print(e)
+
+
 
 
 
